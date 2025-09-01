@@ -4,7 +4,7 @@ import { API_PATHS } from "../../utils/apiPaths";
 import { LuUser, LuUsers } from "react-icons/lu";
 import Model from "../Modal";
 import Modal from "../Modal";
-import AvatarGroup from "../layouts/AvatarGroup";
+import AvatarGroup from "../AvatarGroup";
 
 const SelectUser = ({ selectedUsers, setSelectedUsers }) => {
   const [allUsers, setAllUsers] = useState([]);

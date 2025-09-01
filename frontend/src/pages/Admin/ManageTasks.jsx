@@ -5,6 +5,8 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { LuFileSpreadsheet } from "react-icons/lu";
 import TaskStatusTabs from "../../components/TaskStatusTabs";
+import TaskCard from "../../components/cards/TaskCard";
+import toast from "react-hot-toast";
 
 const ManageTasks = () => {
   const [allTasks, setAllTasks] = useState([]);
@@ -38,11 +40,29 @@ const ManageTasks = () => {
     }
   };
 
-  const handleClick = async () => {
+  const handleClick = async (taskData) => {
     navigate(`/admin/create-task`, { state: { taskId: taskData._id } });
   };
 
-  const handleDownloadReport = async () => {};
+  const handleDownloadReport = async () => {
+    try{
+        const response = await axiosInstance.get(API_PATHS.REPORTS.EXPORT_TASKS, {
+          responseType: "blob",
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement("a");
+        link.href = url ;
+        link.setAttribute("download", "task_details.xlsx");
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    }catch(error){
+       console.log("Error downloading expense details:" , error);
+       toast.error("Failed to downlaod expense details.please try again");
+    }
+  };
 
   useEffect(() => {
     getAllTasks(filterStatus);
@@ -63,19 +83,44 @@ const ManageTasks = () => {
               Download Report
             </button>
           </div>
-          {allTasks?.length > 0 && (
+          {tabs?.[0]?.count > 0 && (
             <div className="flex items-center gap-3">
               <TaskStatusTabs
                 tabs={tabs}
                 activeTab={filterStatus}
                 setActiveTab={setFilterStatus}
               />
-              <button className="hidden lg:flex download-btn" onClick={handleDownloadReport}>
-                     <LuFileSpreadsheet className="text-lg" />
-                     Download Report   
+              <button
+                className="hidden lg:flex download-btn"
+                onClick={handleDownloadReport}
+              >
+                <LuFileSpreadsheet className="text-lg" />
+                Download Report
               </button>
             </div>
           )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          {allTasks?.map((item, index) => (
+            <TaskCard
+              key={item._id}
+              title={item.title}
+              description={item.description}
+              priority={item.priority}
+              status={item.status}
+              progress={item.progress}
+              createdAt={item.createdAt}
+              dueDate={item.dueDate}
+              assignedTo={item.assignedTo?.map((item) => item.profileImageUrl)}
+              attachmentCount={item.attachments?.length || 0}
+              completedTodoCount={item.completedTodoCount || 0}
+              todoCheckList={item.todoChecklist || []}
+              onClick={() => {
+                handleClick(item);
+              }}
+            />
+          ))}
         </div>
       </div>
     </DashboardLayout>

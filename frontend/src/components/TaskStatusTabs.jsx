@@ -2,8 +2,8 @@ import React from "react";
 
 const TaskStatusTabs = ({ tabs, activeTab, setActiveTab }) => {
   return (
-    <div>
-      <div>
+    <div className="my-2">
+      <div className="flex">
         {tabs.map((tab) => (
           <button
             key={tab.label}
@@ -14,12 +14,23 @@ const TaskStatusTabs = ({ tabs, activeTab, setActiveTab }) => {
             } cursor-pointer`}
             onClick={() => setActiveTab(tab.label)}
           >
-            <div className="">
-                <span className=""></span>
-                <span className={`text-xs ml-2 px-2 py-0.5 rounded-full ${
-                    activeTab === tab.label
-                }`}></span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs">{tab.label}</span>
+              <span
+                className={`text-xs ml-2 px-2 py-0.5 rounded-full ${
+                  activeTab === tab.label
+                    ? "bg-primary text-white"
+                    : "bg-gray-200 text-gray-600"
+                }`}
+              >
+                {tab.count}
+              </span>
             </div>
+            {activeTab === tab.label && (
+              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary">
+
+              </div>
+            )}
           </button>
         ))}
       </div>

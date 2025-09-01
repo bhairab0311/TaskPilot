@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import { PRIORITY_DATA } from "../../utils/data";
 import axiosInstance from "../../utils/axiosInstance";
@@ -11,6 +11,8 @@ import SelectDropdown from "../../components/inputs/SelectDropdown";
 import SelectUser from "../../components/inputs/SelectUser";
 import TodoListInput from "../../components/inputs/TodoListInput";
 import AddAttachmentsInput from "../../components/inputs/AddAttachmentsInput";
+import Modal from "../../components/Modal";
+import DeleteAlert from "../../components/DeleteAlert";
 
 const CreateTask = () => {
   const location = useLocation();
@@ -51,7 +53,7 @@ const CreateTask = () => {
   const createTask = async () => {
     setLoading(true);
 
-    try{
+    try {
       const todolist = taskData.todoChecklist?.map((item) => ({
         text: item,
         completed: false,
@@ -61,61 +63,136 @@ const CreateTask = () => {
         ...taskData,
         dueDate: new Date(taskData.dueDate).toISOString(),
         todoChecklist: todolist,
-      })
+      });
 
       toast.success("Task created successfully");
       clearData();
-    }catch(error){
-      console.log("Error creating task:" , error);
+    } catch (error) {
+      console.log("Error creating task:", error);
       setLoading(false);
-    }finally{
+    } finally {
       setLoading(false);
     }
   };
 
-  const updateTask = async () => {};
+  const updateTask = async () => {
+    setLoading(true);
+
+    try {
+      const todoList = taskData.todoChecklist?.map((item) => {
+        const prevTodoChecklist = currentTask?.todoChecklist || [];
+        const matchedTask = prevTodoChecklist.find((task) => task.text == item);
+
+        return {
+          text: item,
+          completed: matchedTask ? matchedTask.completed : false,
+        };
+      });
+
+      const response = await axiosInstance.put(
+        API_PATHS.TASKS.UPDATE_TASK(taskId),
+        {
+          ...taskData,
+          dueDate: new Date(taskData.dueDate).toISOString(),
+          todoChecklist: todoList,
+        }
+      );
+
+      toast.success("task updated sucessfully");
+    } catch (error) {
+      console.error("error creating task", error);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setError(null);
-   
-    if(!taskData.title.trim()){
+
+    if (!taskData.title.trim()) {
       setError("Title is required");
       return;
     }
 
-    if(!taskData.description.trim()){
+    if (!taskData.description.trim()) {
       setError("Description is required");
       return;
     }
 
-    if(!taskData.dueDate){
+    if (!taskData.dueDate) {
       setError("Due date is required");
       return;
     }
 
     if (taskData.assignedTo?.length === 0) {
-    setError("Task not assigned to any member");
-    return;
-  }
+      setError("Task not assigned to any member");
+      return;
+    }
 
-  // Todo checklist validation
-  if (taskData.todoChecklist?.length === 0) {
-    setError("Add at least one todo task");
-    return;
-  }
+    // Todo checklist validation
+    if (taskData.todoChecklist?.length === 0) {
+      setError("Add at least one todo task");
+      return;
+    }
 
-  if(taskId){
-    updateTask();
-    return;
-  }
+    if (taskId) {
+      updateTask();
+      return;
+    }
 
-  createTask();
-
+    createTask();
   };
 
-  const getTaskDetailsById = async () => {};
+  const getTaskDetailsById = async () => {
+    try {
+      const response = await axiosInstance.get(
+        API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
+      );
 
-  const deleteTask = async () => {};
+      if (response.data) {
+        const taskInfo = response.data;
+        setCurrentTask(taskInfo);
+
+        setTaskData((prevState) => ({
+          title: taskInfo.title,
+          description: taskInfo.description,
+          priority: taskInfo.priority,
+          dueDate: taskInfo.dueDate
+            ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
+            : null,
+          assignedTo: taskInfo?.assignedTo?.map((item) => item._id) || [],
+          todoChecklist:
+            taskInfo?.todoChecklist?.map((item) => item?.text) || [],
+          attachments: taskInfo?.attachments || [],
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
+  const deleteTask = async () => {
+    try {
+      await axiosInstance.delete(API_PATHS.TASKS.DELETE_TASK(taskId));
+      setOpenDeleteAlert(false);
+      toast.success("Expense details deleted successfully");
+      navigate("/admin/tasks");
+    } catch (error) {
+      console.error(
+        "error deleting expense:",
+        error.response?.data?.message || error.message
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (taskId) {
+      getTaskDetailsById(taskId);
+    }
+
+    return () => {};
+  }, [taskId]);
 
   return (
     <DashboardLayout activeMenu="Create Task">
@@ -235,16 +312,33 @@ const CreateTask = () => {
                 }
               />
             </div>
-            {error && <p className="text-xs font-medium text-red-500 mt-5">{error}</p>}
+            {error && (
+              <p className="text-xs font-medium text-red-500 mt-5">{error}</p>
+            )}
 
             <div className="flex justify-end mt-7">
-              <button className="add-btn" onClick={handleSubmit} disabled={loading}>
+              <button
+                className="add-btn"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
                 {taskId ? "UPDATE TASK" : "CREATE TASK"}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={openDeleteAlert}
+        onClose={() => setOpenDeleteAlert(false)}
+        title="Delete Task"
+      >
+        <DeleteAlert
+          content="Are you sure you want to delete this task"
+          onDelete={() => deleteTask()}
+        />
+      </Modal>
     </DashboardLayout>
   );
 };
